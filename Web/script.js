@@ -1901,6 +1901,8 @@ async function loadProducts(page, isInitial = false) {
     const noMoreProducts = document.getElementById('noMoreProducts');
 
     if (!productsGrid) return;
+    // Evitar doble carga inicial (p. ej. si se llama dos veces al iniciar)
+    if (isInitial && infiniteScrollState.isLoading) return;
 
     // Marcar como cargando
     infiniteScrollState.isLoading = true;
@@ -1942,15 +1944,17 @@ async function loadProducts(page, isInitial = false) {
         }
 
         const response = await fetch(getApiUrl(`api/productos.php?${params.toString()}`), {
-            headers: { ...(window.getApiHeaders ? window.getApiHeaders() : {}) }
+            headers: { ...(window.getApiHeaders ? window.getApiHeaders() : {}), 'Cache-Control': 'no-cache' },
+            cache: 'no-store'
         });
         let data = await response.json();
 
-        // Normalizar respuesta de Laravel si viene en otro formato
+        // Normalizar respuesta de Laravel (puede venir data.data + data.pagination o data.meta)
         if (window.API_CONFIG && window.API_CONFIG.USE_LARAVEL && data && !data.productos && Array.isArray(data.data)) {
-            const total = data.meta ? (data.meta.total || data.data.length) : data.data.length;
-            const currentPage = data.meta ? (data.meta.current_page || 1) : 1;
-            const lastPage = data.meta ? (data.meta.last_page || 1) : 1;
+            const pag = data.pagination || data.meta || {};
+            const total = pag.total ?? data.data.length;
+            const currentPage = pag.current_page ?? 1;
+            const lastPage = pag.last_page ?? 1;
             data = {
                 success: true,
                 productos: data.data,
@@ -2544,7 +2548,9 @@ async function toggleBloqueo(usuarioId) {
                 showToast('Usuario bloqueado correctamente', 'success');
                 setTimeout(() => { window.location.href = (window.BASE_URL || '') + 'index.php'; }, 1500);
             } else {
-                showToast('Usuario desbloqueado', 'success');
+                showToast('Usuario desbloqueado. Recargando lista de productos…', 'success');
+                // Recargar índice para que la lista de productos se actualice y vuelvan a verse los del usuario desbloqueado
+                setTimeout(() => { window.location.href = (window.BASE_URL || '') + 'index.php'; }, 1200);
             }
         } else {
             showToast(data.error || 'Error al procesar la solicitud', 'error');

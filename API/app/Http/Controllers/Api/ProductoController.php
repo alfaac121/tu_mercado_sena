@@ -36,12 +36,32 @@ class ProductoController extends Controller
                 'order_by',
                 'order_direction'
             ]);
+            // Parámetros que envía el front (Web)
+            if ($request->filled('categoria') && !isset($filtros['categoria_id'])) {
+                $filtros['categoria_id'] = (int) $request->input('categoria');
+            }
+            if ($request->filled('integridad') && !isset($filtros['integridad_id'])) {
+                $filtros['integridad_id'] = (int) $request->input('integridad');
+            }
+            $orden = $request->input('orden', 'newest');
+            $ordenMap = [
+                'newest' => ['order_by' => 'fecha_registro', 'order_direction' => 'desc'],
+                'oldest' => ['order_by' => 'fecha_registro', 'order_direction' => 'asc'],
+                'price_low' => ['order_by' => 'precio', 'order_direction' => 'asc'],
+                'price_high' => ['order_by' => 'precio', 'order_direction' => 'desc'],
+                'available' => ['order_by' => 'disponibles', 'order_direction' => 'desc'],
+            ];
+            if (isset($ordenMap[$orden])) {
+                $filtros['order_by'] = $ordenMap[$orden]['order_by'];
+                $filtros['order_direction'] = $ordenMap[$orden]['order_direction'];
+            }
 
-            $perPage = (int) $request->input('per_page', 15);
+            $perPage = (int) $request->input('limit', $request->input('per_page', 12));
 
             $resultado = $this->productoService->listarProductos($filtros, $perPage);
 
-            return response()->json($resultado, 200);
+            return response()->json($resultado, 200)
+                ->header('Cache-Control', 'no-store, no-cache, must-revalidate');
 
         } catch (\Exception $e) {
             return response()->json([
@@ -61,14 +81,9 @@ class ProductoController extends Controller
     try {
         $dto = InputDto::fromRequest($request->validated());
         
-        //Solo buscar 'imagenes'
         $imagenes = null;
-        
         if ($request->hasFile('imagenes')) {
             $archivos = $request->file('imagenes');
-            
-            // Si es array, usar directamente
-            // Si es un solo archivo, convertir a array
             $imagenes = is_array($archivos) ? $archivos : [$archivos];
         }
 
@@ -123,9 +138,7 @@ class ProductoController extends Controller
     try {
         $dto = InputDto::fromRequest($request->validated(), $id);
         
-        // Mismo código
         $imagenes = null;
-        
         if ($request->hasFile('imagenes')) {
             $archivos = $request->file('imagenes');
             $imagenes = is_array($archivos) ? $archivos : [$archivos];

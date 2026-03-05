@@ -117,8 +117,10 @@ $app = Application::configure(basePath: dirname(__DIR__))
                         $e instanceof NotFoundHttpException => 404,
                         default => ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpException ? $e->getStatusCode() : 500),
                     };
-                    
-                    $message = 'Ocurrió un error inesperado en el servidor.';
+                    // En desarrollo mostrar el mensaje real para depurar
+                    $message = (config('app.debug') && $e->getMessage())
+                        ? $e->getMessage()
+                        : 'Ocurrió un error inesperado en el servidor.';
                 }
 
                 // 5. Logging para errores críticos (>= 500)

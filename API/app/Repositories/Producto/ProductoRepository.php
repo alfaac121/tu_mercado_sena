@@ -11,6 +11,16 @@ use Illuminate\Support\Facades\Auth;
 class ProductoRepository implements IProductoRepository
 {
     /**
+     * Id del usuario (Usuario) actual. El guard JWT usa Cuenta, por eso Auth::id() es cuenta_id.
+     * En productos y bloqueados se usan usuario_id.
+     */
+    protected function currentUsuarioId(): ?int
+    {
+        $user = Auth::user();
+        return $user && $user->usuario ? (int) $user->usuario->id : null;
+    }
+
+    /**
      * Crea un nuevo producto
      */
     public function crear(array $data): Producto
@@ -94,9 +104,10 @@ class ProductoRepository implements IProductoRepository
             $query->porVendedor($filtros['vendedor_id']);
         }
 
-        // Excluir mis propios productos en el listado general si no se filtra por vendedor
-        if (Auth::check() && !isset($filtros['vendedor_id'])) {
-            $query->where('vendedor_id', '<>', Auth::id());
+        // Excluir mis propios productos en el listado general (vendedor_id es usuario_id)
+        $miUsuarioId = $this->currentUsuarioId();
+        if ($miUsuarioId !== null && !isset($filtros['vendedor_id'])) {
+            $query->where('vendedor_id', '<>', $miUsuarioId);
         }
 
         // Ordenamiento
@@ -115,7 +126,8 @@ class ProductoRepository implements IProductoRepository
         $query = Producto::porVendedor($vendedorId);
 
         // Si el usuario autenticado no es el vendedor, aplicar filtro de bloqueados
-        if (Auth::check() && Auth::id() !== $vendedorId) {
+        $miUsuarioId = $this->currentUsuarioId();
+        if ($miUsuarioId !== null && $miUsuarioId !== $vendedorId) {
             $query = $this->aplicarFiltroBloqueados($query);
         }
 
@@ -181,8 +193,9 @@ class ProductoRepository implements IProductoRepository
         }
 
         // Excluir mis propios productos en la búsqueda general
-        if (Auth::check()) {
-            $query->where('vendedor_id', '<>', Auth::id());
+        $miUsuarioId = $this->currentUsuarioId();
+        if ($miUsuarioId !== null) {
+            $query->where('vendedor_id', '<>', $miUsuarioId);
         }
 
         return $query->orderBy('fecha_registro', 'desc')->paginate($perPage);
@@ -195,7 +208,10 @@ class ProductoRepository implements IProductoRepository
      */
     protected function aplicarFiltroBloqueados($query)
     {
-        $usuarioId = Auth::id();
+        $usuarioId = $this->currentUsuarioId();
+        if ($usuarioId === null) {
+            return $query;
+        }
 
         return $query->whereNotIn('vendedor_id', function ($subQuery) use ($usuarioId) {
             $subQuery->select('bloqueado_id')

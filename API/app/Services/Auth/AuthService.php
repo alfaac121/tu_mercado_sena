@@ -194,9 +194,9 @@ class AuthService implements IAuthService
                 'ultimo_uso'  => now()
             ]);
 
-            // Actualizar fecha de actividad reciente
+            // Actualizar fecha de actividad reciente del usuario asociado a la cuenta
             DB::table('usuarios')
-                ->where('id', $cuenta->id)
+                ->where('cuenta_id', $cuenta->id)
                 ->update(['fecha_reciente' => Carbon::now()]);
 
             return [

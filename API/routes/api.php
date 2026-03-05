@@ -66,6 +66,12 @@ Route::prefix('auth')->group(function()  {
 });
 
 /**
+ * Listado de productos PÚBLICO (sin JWT).
+ * Así todos ven los productos aunque el token falle o no se envíe; evita que "desaparezcan" al recargar.
+ */
+Route::get('/productos', [ProductoController::class, 'index']);
+
+/**
  * RUTAS PROTEGIDAS (Requieren autenticación)
  * 
  * El middleware personalizado "jwtVerify" verifica el token.

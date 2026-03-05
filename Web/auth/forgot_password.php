@@ -222,8 +222,9 @@ if (!$useLaravelAuth && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     body: JSON.stringify({ email: email })
                 });
                 var data = await r.json();
-                if (data.cuenta_id) {
-                    fpCuentaId = data.cuenta_id;
+                var cuentaId = data.cuenta_id || (data.data && data.data.cuenta_id);
+                if (cuentaId) {
+                    fpCuentaId = cuentaId;
                     fpShowStep(2);
                 } else {
                     err.textContent = data.message || (data.errors && Object.values(data.errors).flat().join(' ')) || 'Error al enviar el código';
@@ -248,7 +249,8 @@ if (!$useLaravelAuth && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     body: JSON.stringify({ cuenta_id: fpCuentaId, clave: clave })
                 });
                 var data = await r.json();
-                if (data.success && data.clave_verificada) {
+                var ok = (data.success && data.clave_verificada) || data.status === 'success';
+                if (ok) {
                     fpShowStep(3);
                 } else {
                     err.textContent = data.message || (data.errors && Object.values(data.errors).flat().join(' ')) || 'Código incorrecto o expirado';
@@ -275,7 +277,8 @@ if (!$useLaravelAuth && $_SERVER['REQUEST_METHOD'] === 'POST') {
                     body: JSON.stringify({ cuenta_id: fpCuentaId, password: password, password_confirmation: password_confirm })
                 });
                 var data = await r.json();
-                if (data.success) {
+                var ok = r.ok && (data.success || data.status === 'success');
+                if (ok) {
                     window.location.href = (window.BASE_URL || '') + 'auth/login.php?password_changed=1';
                 } else {
                     err.textContent = data.message || (data.errors && Object.values(data.errors).flat().join(' ')) || 'Error al restablecer';
